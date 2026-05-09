@@ -1,0 +1,29 @@
+# Local secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+
+# Runtime/generated output
+.streamlit/
+.streamlit_runtime/
+generated/
+/data/
+*.log
+*.pid
+
+# IDE/OS
+.idea/
+.vscode/
+.DS_Store

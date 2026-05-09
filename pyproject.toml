@@ -1,0 +1,19 @@
+[project]
+name = "prefab-ui-db-demo"
+version = "0.1.0"
+description = "Streamlit chat demo for MySQL-backed dynamic Prefab-style UI generation."
+requires-python = ">=3.12"
+dependencies = [
+    "anthropic>=0.49.0",
+    "pandas>=2.2.0",
+    "plotly>=5.22.0",
+    "prefab-ui>=0.19.1",
+    "pydantic>=2.8.0",
+    "pymysql>=1.1.0",
+    "python-dotenv>=1.0.0",
+    "sqlalchemy>=2.0.0",
+    "streamlit>=1.40.0",
+]
+
+[tool.uv]
+package = false
