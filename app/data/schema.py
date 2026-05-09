@@ -79,6 +79,7 @@ class TableInfo(BaseModel):
 
 class DatabaseSchema(BaseModel):
     database_name: str
+    sql_dialect: str = "mysql"
     tables: list[TableInfo] = Field(default_factory=list)
 
     def table_names(self) -> set[str]:
@@ -114,12 +115,17 @@ class DatabaseSchema(BaseModel):
 
         return {
             "database": "runtime_configured_database",
+            "sql_dialect": self.sql_dialect,
             "table_count": len(self.tables),
             "tables": tables,
         }
 
     def as_prompt_text(self) -> str:
-        lines = ["Database: runtime_configured_database", f"Tables: {len(self.tables)}"]
+        lines = [
+            "Database: runtime_configured_database",
+            f"SQL dialect: {self.sql_dialect}",
+            f"Tables: {len(self.tables)}",
+        ]
         for table in self.tables:
             lines.append("")
             row_count = f", approx rows: {table.row_count_estimate}" if table.row_count_estimate is not None else ""

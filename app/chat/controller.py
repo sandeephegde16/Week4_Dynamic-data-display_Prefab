@@ -40,7 +40,7 @@ def handle_question(
 
     if schema is None or engine is None:
         return response_for_error(
-            "Connect to MySQL first. The app needs schema introspection before it can answer database questions.",
+            "Connect to a database source first. The app needs schema introspection before it can answer database questions.",
             debug={"question": question},
         )
 
@@ -128,7 +128,7 @@ def handle_question(
             )
             if repaired is None:
                 return response_for_error(
-                    "The SQL query failed against MySQL.",
+                    "The SQL query failed against the configured database.",
                     debug={**debug, "execution_error": str(exc)},
                 )
             plan, validation, frame = repaired
@@ -150,6 +150,7 @@ def _asks_for_schema_analysis(question: str) -> bool:
     normalized = question.lower()
     phrases = [
         "what questions",
+        "what kind of questions",
         "what can i ask",
         "what widgets",
         "suitable widgets",
@@ -240,7 +241,7 @@ def _handle_multi_query_plan(
                 if repaired is None:
                     debug["multi_query"] = {"blocks": block_debugs}
                     return response_for_error(
-                        f"The SQL query for `{block_title}` failed against MySQL.",
+                        f"The SQL query for `{block_title}` failed against the configured database.",
                         debug=debug,
                     )
                 block_plan, validation, frame = repaired

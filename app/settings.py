@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 @dataclass(frozen=True)
 class Settings:
     app_debug: bool
+    demo_mode: bool
     query_max_rows: int
     mysql_host: str
     mysql_port: int
@@ -23,6 +24,10 @@ class Settings:
     enable_claude_schema_analysis: bool
 
     @property
+    def database_configured(self) -> bool:
+        return self.demo_mode or self.mysql_configured
+
+    @property
     def mysql_configured(self) -> bool:
         return all([self.mysql_host, self.mysql_database, self.mysql_user, self.mysql_password])
 
@@ -33,6 +38,7 @@ class Settings:
     def public_status(self) -> dict[str, object]:
         return {
             "app_debug": self.app_debug,
+            "demo_mode": self.demo_mode,
             "query_max_rows": self.query_max_rows,
             "mysql_port": self.mysql_port,
             "mysql_configured": self.mysql_configured,
@@ -51,6 +57,7 @@ def load_settings() -> Settings:
     load_dotenv()
     return Settings(
         app_debug=_get_bool("APP_DEBUG", default=False),
+        demo_mode=_get_bool("DEMO_MODE", default=False),
         query_max_rows=_get_int("QUERY_MAX_ROWS", default=500),
         mysql_host=os.getenv("MYSQL_HOST", ""),
         mysql_port=_get_int("MYSQL_PORT", default=3306),

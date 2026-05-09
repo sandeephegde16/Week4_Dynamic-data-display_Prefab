@@ -9,6 +9,7 @@ import streamlit as st
 from sqlalchemy.engine import Engine
 
 from app.chat.controller import handle_question
+from app.data.demo import create_demo_engine, demo_schema, test_demo_connection
 from app.data.mysql import create_mysql_engine, introspect_schema, test_connection
 from app.data.schema import DatabaseSchema
 from app.debug import configure_logging, log_event
@@ -63,9 +64,9 @@ def _render_page_chrome() -> None:
     st.markdown(
         """
         <div class="db-hero">
-          <div class="db-eyebrow">Live database workspace</div>
+          <div class="db-eyebrow">Dynamic data workspace</div>
           <h1>Dynamic Database Chat</h1>
-          <p>Ask in plain English and turn live MySQL answers into clean, interactive Prefab UI.</p>
+          <p>Ask in plain English and turn database answers into clean, interactive Prefab UI.</p>
         </div>
         """,
         unsafe_allow_html=True,
@@ -78,14 +79,16 @@ def _render_connection_summary(settings: Settings) -> None:
 
     with left:
         if schema is None:
-            if settings.mysql_configured:
+            if settings.demo_mode:
+                st.info("Preparing the synthetic demo database...")
+            elif settings.mysql_configured:
                 st.info("Connecting to MySQL and reading schema...")
             else:
-                st.error("MySQL settings are incomplete. Fill `.env` and reload the app.")
+                st.error("Database settings are incomplete. Enable `DEMO_MODE=true` or fill `.env` with MySQL settings.")
         else:
             _render_schema_stats(
                 [
-                    ("Connection", "Ready"),
+                    ("Mode", "Demo" if settings.demo_mode else "MySQL"),
                     ("Tables", f"{len(schema.tables):,}"),
                 ],
             )
@@ -99,7 +102,7 @@ def _render_connection_summary(settings: Settings) -> None:
             st.rerun()
 
     if schema is not None:
-        _render_connection_line(f"Connected to configured MySQL source. Claude: {settings.claude_model}.")
+        _render_connection_line(f"{_source_caption(settings)}. Claude: {settings.claude_model}.")
 
 
 def _auto_connect_if_needed(settings: Settings) -> None:
@@ -109,37 +112,42 @@ def _auto_connect_if_needed(settings: Settings) -> None:
         return
 
     st.session_state.auto_connect_attempted = True
-    if not settings.mysql_configured:
-        log_event("Auto-connect skipped because MySQL settings are incomplete.", settings.public_status())
+    if not settings.database_configured:
+        log_event("Auto-connect skipped because database settings are incomplete.", settings.public_status())
         return
 
-    log_event("Auto-connecting to MySQL on app open.")
+    log_event("Auto-connecting to configured data source on app open.")
     _connect_and_analyze(settings, source="auto_connect", rerun=False)
 
 
 def _connect_and_analyze(settings: Settings, *, source: str, rerun: bool) -> None:
-    if not settings.mysql_configured:
-        log_event("MySQL connection skipped because settings are incomplete.", settings.public_status())
-        st.error("MySQL settings are incomplete. Fill `.env` and retry.")
+    if not settings.database_configured:
+        log_event("Database connection skipped because settings are incomplete.", settings.public_status())
+        st.error("Enable `DEMO_MODE=true` or fill `.env` with MySQL settings and retry.")
         return
 
     try:
-        with st.spinner("Connecting to MySQL and reading schema..."):
-            engine = create_mysql_engine(settings)
-            test_connection(engine)
-            schema = introspect_schema(engine, settings.mysql_database)
+        with st.spinner(_connect_spinner(settings)):
+            if settings.demo_mode:
+                engine = create_demo_engine()
+                test_demo_connection(engine)
+                schema = demo_schema()
+            else:
+                engine = create_mysql_engine(settings)
+                test_connection(engine)
+                schema = introspect_schema(engine, settings.mysql_database)
             analysis = analyze_schema(schema, settings)
     except Exception as exc:
-        log_event("MySQL connect/analyze failed.", {"error": str(exc)})
-        st.error(f"MySQL connection or schema analysis failed: {exc}")
+        log_event("Database connect/analyze failed.", {"error": str(exc), "demo_mode": settings.demo_mode})
+        st.error(f"Database connection or schema analysis failed: {exc}")
         return
 
     st.session_state.engine = engine
     st.session_state.schema = schema
     st.session_state.schema_analysis = analysis
-    log_event("MySQL schema stored in session.", {"tables": len(schema.tables), "source": source})
+    log_event("Database schema stored in session.", {"tables": len(schema.tables), "source": source})
     if source != "auto_connect":
-        st.toast("MySQL schema refreshed.")
+        st.toast("Schema refreshed.")
     if rerun:
         st.rerun()
 
@@ -214,7 +222,14 @@ def _generic_schema_questions(schema: DatabaseSchema) -> list[str]:
     questions = ["Show me schema relationships"]
     for table in schema.tables:
         date_column = next((column for column in table.columns if column.is_datetime), None)
-        numeric_column = next((column for column in table.columns if column.is_numeric and not column.is_primary_key), None)
+        numeric_column = next(
+            (
+                column
+                for column in table.columns
+                if column.is_numeric and not column.is_primary_key and not column.column_name.lower().endswith("_id")
+            ),
+            None,
+        )
         category_column = next((column for column in table.columns if column.looks_categorical), None)
 
         if numeric_column is not None:
@@ -260,6 +275,18 @@ def _render_connection_line(caption: str) -> None:
     )
 
 
+def _source_caption(settings: Settings) -> str:
+    if settings.demo_mode:
+        return "Connected to synthetic demo data"
+    return "Connected to configured MySQL source"
+
+
+def _connect_spinner(settings: Settings) -> str:
+    if settings.demo_mode:
+        return "Preparing synthetic demo database..."
+    return "Connecting to MySQL and reading schema..."
+
+
 def _render_messages(settings: Settings) -> None:
     for message in st.session_state.messages:
         role = message["role"]
@@ -276,7 +303,7 @@ def _render_messages(settings: Settings) -> None:
 
 
 def _handle_pending_or_typed_question(settings: Settings, *, welcome_slot: Any) -> None:
-    typed = st.chat_input("Ask about the connected database")
+    typed = st.chat_input("Ask about the database")
     question = st.session_state.pending_question or typed
     if not question:
         return

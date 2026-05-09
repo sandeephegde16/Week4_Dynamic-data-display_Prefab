@@ -44,10 +44,23 @@ def _compact_json(value: object) -> str:
     return json.dumps(value, separators=(",", ":"), default=str)
 
 
+def _dialect_name(schema: DatabaseSchema) -> str:
+    return "SQLite" if schema.sql_dialect.lower() == "sqlite" else "MySQL"
+
+
+def _dialect_rule(schema: DatabaseSchema) -> str:
+    if schema.sql_dialect.lower() == "sqlite":
+        return (
+            "Use SQLite syntax. For month buckets use strftime('%Y-%m', date_column); "
+            "do not use MySQL-only functions such as DATE_FORMAT, YEAR, MONTH, or INTERVAL."
+        )
+    return "Use MySQL syntax."
+
+
 def schema_analysis_prompt(schema: DatabaseSchema) -> str:
     compact_schema = schema.compact_summary(max_tables=15, max_columns_per_table=10)
     return f"""\
-Analyze this MySQL schema for a dynamic UI demo.
+Analyze this {_dialect_name(schema)} schema for a dynamic UI demo.
 
 Tasks:
 - Infer likely business questions.
@@ -69,18 +82,19 @@ def query_planner_prompt(schema: DatabaseSchema, question: str, chat_context: li
     context = _compact_json(chat_context[-6:])
     schema_context = schema.as_prompt_text()
     return f"""\
-You are a careful MySQL analytics planner for a Streamlit + Prefab-style dynamic UI demo.
+You are a careful {_dialect_name(schema)} analytics planner for a Streamlit + Prefab-style dynamic UI demo.
 
 Action rules:
 - clarify: ambiguous database request.
 - answer_text: no database access is needed.
-- run_sql: database access is needed; produce either one safe MySQL query in sql, or multiple safe MySQL queries in queries.
+- run_sql: database access is needed; produce either one safe SQL query in sql, or multiple safe SQL queries in queries.
 
 SQL rules:
 - Use only the full schema below; never invent tables, columns, or render fields.
 - Read all table and column names before choosing SQL. Prefer the most semantically exact table/column, not the first lexical match.
 - If multiple tables could answer the question, choose the base business table over audit/history/archive tables unless the user asks for history/audit/archive.
 - Each SQL string must be read-only: one SELECT or WITH ... SELECT.
+- {_dialect_rule(schema)}
 - Do not use: {FORBIDDEN_SQL}.
 - Prefer aliases that are easy to render, such as period, category, total_value, record_count.
 - For dashboard or overview requests with several independent facts or sections, prefer queries over one large UNION query. Use one focused query per independent result section, grouping fields only when they share the same grain, filters, and source relationship.
@@ -128,7 +142,7 @@ def sql_repair_prompt(
     context = _compact_json(chat_context[-6:])
     schema_context = schema.as_prompt_text()
     return f"""\
-Repair a failed MySQL analytics query for a Streamlit + Prefab-style dynamic UI demo.
+Repair a failed {_dialect_name(schema)} analytics query for a Streamlit + Prefab-style dynamic UI demo.
 
 Return exactly one JSON object with the same keys as the query planner:
 action, question_rewrite, explanation, sql, queries, render, confidence.
@@ -141,9 +155,10 @@ Rules:
 - Keep the user's requested answer intent.
 - Use only the full schema below; never invent tables or columns.
 - SQL must be read-only: one SELECT or WITH ... SELECT.
+- {_dialect_rule(schema)}
 - Do not use: {FORBIDDEN_SQL}.
 - Fix the SQL syntax, validation, or runtime problem shown by the error.
-- For MySQL UNION queries, do not place ORDER BY/LIMIT directly inside individual UNION branches. Use CTEs, derived tables, or scalar subqueries when branch-level ordering/limiting is needed.
+- For UNION queries, do not place ORDER BY/LIMIT directly inside individual UNION branches. Use CTEs, derived tables, or scalar subqueries when branch-level ordering/limiting is needed.
 - Prefer a simple rectangular result shape that is easy to render: metric/label/value rows for dashboards, or normal grouped rows for charts/tables.
 - Do not include prose, markdown, or SQL outside the JSON object.
 

@@ -1,6 +1,6 @@
 # Dynamic Prefab UI Database Chat
 
-Streamlit app that connects to a configured MySQL database, uses Claude to plan safe read-only SQL, and renders validated dynamic UI with Prefab components.
+Streamlit app that connects to either synthetic demo data or a configured MySQL database, uses Claude to plan safe read-only SQL, and renders validated dynamic UI with Prefab components.
 
 ## Where It Helps
 
@@ -15,7 +15,9 @@ uv sync
 cp .env.example .env
 ```
 
-Fill `.env` with read-only MySQL credentials and an Anthropic API key. `.env` is ignored by Git.
+For a demo without a real database, keep `DEMO_MODE=true` in `.env`. The app will create a synthetic SQLite database with generic customers, loan products, loan accounts, payments, and fees.
+
+For a live database, set `DEMO_MODE=false` and fill `.env` with read-only MySQL credentials and an Anthropic API key. `.env` is ignored by Git.
 
 ## Run
 

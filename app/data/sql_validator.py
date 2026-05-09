@@ -1,4 +1,4 @@
-"""Conservative SQL validation for LLM-produced MySQL queries."""
+"""Conservative SQL validation for LLM-produced read-only queries."""
 
 from __future__ import annotations
 

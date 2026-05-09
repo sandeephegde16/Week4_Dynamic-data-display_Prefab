@@ -1,7 +1,7 @@
 [project]
 name = "prefab-ui-db-demo"
 version = "0.1.0"
-description = "Streamlit chat demo for MySQL-backed dynamic Prefab-style UI generation."
+description = "Streamlit chat demo for dynamic Prefab-style UI generation over demo or MySQL data."
 requires-python = ">=3.12"
 dependencies = [
     "anthropic>=0.49.0",
