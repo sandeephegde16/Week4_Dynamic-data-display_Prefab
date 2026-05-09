@@ -26,3 +26,6 @@ uv run streamlit run main.py
 ```
 
 Runtime files, generated Prefab output, caches, local environments, and secrets are excluded from the repository.
+
+## Demo Video
+https://youtu.be/b5juBM40FGw
