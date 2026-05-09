@@ -2,6 +2,12 @@
 
 Streamlit app that connects to a configured MySQL database, uses Claude to plan safe read-only SQL, and renders validated dynamic UI with Prefab components.
 
+## Where It Helps
+
+This app is useful when a team wants to explore a relational database without building a fixed dashboard for every question. A user can ask plain-English questions, the app inspects the live schema, runs validated read-only SQL, and chooses a fitting UI such as a table, KPI cards, charts, detail views, filters, or schema relationship views.
+
+It works well for internal analytics demos, database discovery, quick operational reporting, and prototyping dynamic data apps where the UI should adapt to the result shape instead of being hardcoded for one business domain.
+
 ## Setup
 
 ```bash
